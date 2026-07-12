@@ -41,6 +41,7 @@ function makeWorld(target) {
             switch (event) {
                 case "state":    print(format("  %s: %s -> %s\n", guard.name, data.from, data.to)); break;
                 case "waypoint": print(format("  %s reached waypoint %d.\n", guard.name, data.index)); break;
+                case "alert":    print(format("  %s spotted the target at %s!\n", guard.name, positionText(data.position))); break;
                 case "attack":   print(format("  %s attacks!\n", guard.name)); break;
                 case "damaged":  print(format("  %s takes %d damage; health=%d\n", guard.name, data.amount, data.health)); break;
                 case "death":    print(format("  %s has been defeated.\n", guard.name)); break;

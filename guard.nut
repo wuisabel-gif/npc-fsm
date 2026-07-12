@@ -2,7 +2,8 @@
 // dofile("guard.nut") in your game and drive it with your own `world` host.
 //
 // Each frame call:  guard.update(deltaTime, world)
-// and when the guard is hit:  guard.takeDamage(world, amount, attackerPosition)
+// when the guard is hit:  guard.takeDamage(world, amount, attackerPosition)
+// to summon it to a disturbance:  guard.alertTo(world, position)
 //
 // The `world` object is YOUR adapter into the engine. It must provide:
 //   world.target                    -> the entity this guard reacts to, or null
@@ -18,7 +19,12 @@
 // Events emitted through world.emit (data payload in braces):
 //   "state"    {from, to}          "waypoint" {index}
 //   "attack"   {damage}            "damaged"  {amount, health}
-//   "death"    {}
+//   "death"    {}                  "alert"    {position}  <- guard just detected the target
+//
+// Detection is gradual: a suspicion meter fills while the target is visible and
+// drains when it is not; CHASE begins only when it reaches 1.0. On detection the
+// guard emits "alert" with the target's last known position — a host can forward
+// that to nearby guards via their alertTo(world, position) to make a squad react.
 //
 // See demo.nut for a complete example host (distance-based sight, print events).
 
@@ -90,6 +96,13 @@ class GuardNPC {
     searchTimer = 0.0;
     waypointTolerance = 0.15;
 
+    // Detection is gradual: a 0..1 meter that fills while the target is visible
+    // (faster up close) and drains when it is not. CHASE begins only at 1.0.
+    suspicion = 0.0;
+    suspicionRise = 1.6;      // per second at point-blank
+    suspicionDecay = 0.5;     // per second while unseen
+    suspicionFloor = 0.2;     // minimum fill rate at the edge of sight
+
     lastKnownPlayerPosition = null;
     homePosition = null;
 
@@ -118,11 +131,43 @@ class GuardNPC {
         lastKnownPlayerPosition = vec2(target.position.x, target.position.y);
     }
 
+    // Fill the suspicion meter while the target is visible, drain it otherwise.
+    function senseSuspicion(deltaTime, world) {
+        local seen = perceive(world);
+        if (seen) {
+            local d = vecDistance(position, seen.position);
+            local closeness = clamp(1.0 - d / sightRange, suspicionFloor, 1.0);
+            suspicion = clamp(suspicion + suspicionRise * closeness * deltaTime, 0.0, 1.0);
+        } else {
+            suspicion = clamp(suspicion - suspicionDecay * deltaTime, 0.0, 1.0);
+        }
+        return seen;
+    }
+
+    // Called from the calm states: once the meter tops out, raise the alarm
+    // (so nearby guards can be alerted) and commit to the chase.
+    function tryDetect(world) {
+        if (suspicion < 1.0) return false;
+        world.emit(this, "alert", { position = lastKnownPlayerPosition });
+        setState(world, STATE_CHASE);
+        return true;
+    }
+
+    // A guard told about a disturbance goes to investigate it (unless already engaged).
+    function alertTo(world, alertPosition) {
+        if (state == STATE_DEAD || state == STATE_CHASE || state == STATE_ATTACK) return;
+        lastKnownPlayerPosition = vec2(alertPosition.x, alertPosition.y);
+        setState(world, STATE_SEARCH);
+    }
+
     function setState(world, nextState) {
         if (state == nextState) return;
         world.emit(this, "state", { from = state, to = nextState });
         state = nextState;
         if (state == STATE_SEARCH) searchTimer = searchDuration;
+        // Reset the meter on any transition out of calm patrolling so a guard
+        // that just lost the target has to re-detect rather than snap back.
+        if (state == STATE_CHASE || state == STATE_SEARCH || state == STATE_RETURN) suspicion = 0.0;
     }
 
     function update(deltaTime, world) {
@@ -139,8 +184,9 @@ class GuardNPC {
     }
 
     function updatePatrol(deltaTime, world) {
-        local seen = perceive(world);
-        if (seen) { remember(seen); setState(world, STATE_CHASE); return; }
+        local seen = senseSuspicion(deltaTime, world);
+        if (seen) remember(seen);
+        if (tryDetect(world)) return;
 
         local target = patrolPoints[patrolIndex];
         position = step(world, target, walkSpeed * deltaTime);
@@ -180,8 +226,9 @@ class GuardNPC {
     }
 
     function updateSearch(deltaTime, world) {
-        local seen = perceive(world);
-        if (seen) { remember(seen); setState(world, STATE_CHASE); return; }
+        local seen = senseSuspicion(deltaTime, world);
+        if (seen) remember(seen);
+        if (tryDetect(world)) return;
 
         position = step(world, lastKnownPlayerPosition, walkSpeed * deltaTime);
         searchTimer -= deltaTime;
@@ -189,8 +236,9 @@ class GuardNPC {
     }
 
     function updateReturn(deltaTime, world) {
-        local seen = perceive(world);
-        if (seen) { remember(seen); setState(world, STATE_CHASE); return; }
+        local seen = senseSuspicion(deltaTime, world);
+        if (seen) remember(seen);
+        if (tryDetect(world)) return;
 
         local target = patrolPoints[patrolIndex];
         position = step(world, target, walkSpeed * deltaTime);
@@ -212,6 +260,7 @@ class GuardNPC {
     }
 
     function status() {
-        return format("%s %-6s pos=%s hp=%d", name, state, positionText(position), health);
+        return format("%s %-6s pos=%s hp=%d susp=%.0f%%",
+            name, state, positionText(position), health, suspicion * 100.0);
     }
 }
