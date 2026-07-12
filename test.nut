@@ -59,4 +59,23 @@ function run() {
     print("test.nut: all transitions OK  " + path + "\n");
 }
 
+// alertTo(): a calm guard goes to investigate the reported spot; an already
+// engaged (or dead) guard ignores the call.
+function testAlert() {
+    local route = [vec2(0, 0), vec2(6, 0), vec2(6, 6), vec2(0, 6)];
+
+    local calm = GuardNPC("Calm", vec2(0, 0), route);
+    calm.alertTo(world, vec2(5, 5));
+    assert(calm.state == "SEARCH");
+    assert(vecDistance(calm.lastKnownPlayerPosition, vec2(5, 5)) < 0.001);
+
+    local engaged = GuardNPC("Engaged", vec2(0, 0), route);
+    engaged.state = "ATTACK";
+    engaged.alertTo(world, vec2(9, 9));
+    assert(engaged.state == "ATTACK");
+
+    print("test.nut: alertTo OK\n");
+}
+
 run();
+testAlert();

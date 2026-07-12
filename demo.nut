@@ -4,24 +4,7 @@
 // three adapter functions with your real FOV, event, and navigation systems.
 
 dofile("guard.nut", true);
-
-// The target entity. Your game already has one of these — it just needs
-// .position, .alive, and .takeDamage(amount).
-class Player {
-    position = null;
-    health = 100;
-    alive = true;
-
-    constructor(startPosition) { position = vec2(startPosition.x, startPosition.y); }
-    function moveTo(newPosition) { position = vec2(newPosition.x, newPosition.y); }
-
-    function takeDamage(amount) {
-        if (!alive) return;
-        health = clamp(health - amount, 0, 100);
-        print(format("  PLAYER takes %d damage; health=%d\n", amount, health));
-        if (health <= 0) { alive = false; print("  PLAYER has been defeated.\n"); }
-    }
-}
+dofile("player.nut", true);   // the example target entity
 
 // The world adapter. THIS is the engine boundary — swap each function for your
 // engine's real implementation. No world.moveToward here, so the guard uses its
