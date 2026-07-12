@@ -99,4 +99,6 @@ It drives the guard through the full state arc (`PATROL → CHASE → ATTACK →
 
 ## Why Squirrel fits
 
-Squirrel supports classes, tables, arrays, functions, and embedding in native applications, so gameplay behavior can stay editable outside the C++ engine. This project uses classes for the player and guard and an explicit state machine for predictable behavior.
+This is a practice project — a small, focused way to learn how game AI is structured and how a scripting language embeds in a native engine. Squirrel is a good fit for both goals.
+
+Squirrel is a lightweight scripting language built to be embedded in C/C++ applications, with classes, tables, arrays, and first-class functions. That embeddability is the whole point: gameplay behavior lives in a script the engine loads at runtime, so you can tweak how a guard thinks without recompiling the engine — and `host.cpp` shows exactly that. The library leans on the parts that make behavior code readable: a `GuardNPC` class holds the guard's state, and an explicit finite-state machine keeps its decisions predictable and easy to reason about — which is what makes it a clear example to learn from.
