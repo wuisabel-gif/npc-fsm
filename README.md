@@ -1,6 +1,6 @@
 # npc-fsm
 
-An engine-independent NPC behavior library written in **Squirrel**. It drives a guard with a finite-state machine you plug into your own game — no engine dependency. The bundled demo character is **Sentinel-7**.
+An engine-independent NPC behavior library written in **Squirrel**. It drives a guard with a finite-state machine you plug into your own game — no engine dependency.
 
 ## Behavior states
 

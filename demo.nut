@@ -78,7 +78,7 @@ function scriptedPlayerMovement(time, player) {
 function main() {
     local patrolRoute = [vec2(0, 0), vec2(6, 0), vec2(6, 6), vec2(0, 6)];
     local player = Player(vec2(14, 5));
-    local guard = GuardNPC("Sentinel-7", vec2(0, 0), patrolRoute);
+    local guard = GuardNPC("Guard", vec2(0, 0), patrolRoute);
     local world = makeWorld(player);
 
     local deltaTime = 0.5;
