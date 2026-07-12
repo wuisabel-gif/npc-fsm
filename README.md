@@ -1,6 +1,14 @@
 # npc-fsm
 
+[![CI](https://github.com/wuisabel-gif/npc-fsm/actions/workflows/ci.yml/badge.svg)](https://github.com/wuisabel-gif/npc-fsm/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/wuisabel-gif/npc-fsm)](https://github.com/wuisabel-gif/npc-fsm/releases/latest)
+[![license](https://img.shields.io/github/license/wuisabel-gif/npc-fsm)](LICENSE)
+
 An engine-independent NPC behavior library written in **Squirrel**. It drives a guard with a finite-state machine you plug into your own game — no engine dependency.
+
+![squad alert demo](assets/squad.gif)
+
+*Guard-1 spots the target and radios it in; Guard-2 (nearby) is summoned and converges; Guard-3 (far away) never hears it. Same `guard.nut` as the single-guard demo — the squad behavior is all in the host.*
 
 ## Behavior states
 
@@ -32,6 +40,7 @@ The guard can:
 - `player.nut` — the example target entity used by the demos.
 - `demo.nut` — single-guard example host (`sq demo.nut`). Prints a live ASCII arena each tick: `G` guard, `P` player, `o` waypoints, `x` dead guard.
 - `squad.nut` — multi-guard example host (`sq squad.nut`). One guard's alert summons nearby guards while a distant one stays on patrol; guards render as `1`/`2`/`3`.
+- `host.cpp` — a ~200-line C++ program that embeds the Squirrel VM and drives `guard.nut`, implementing perception and events natively. Proof the library runs inside a real engine (see below).
 - `test.nut` — self-check driving a guard through every state transition and the alert path (`sq test.nut`).
 
 ## Run the demos
@@ -68,6 +77,18 @@ world.moveToward(guard, dest, d) -> OPTIONAL: your navmesh/pathfinding/steering.
 The target entity is duck-typed: it needs `.position {x,y}`, `.alive`, and `.takeDamage(amount)`. Events the guard emits: `state`, `waypoint`, `attack`, `damaged`, `death`, and `alert` (fired the moment suspicion tops out, carrying the target's last known position). See `demo.nut` for a complete working host you can copy — swapping distance-based sight for a real FOV cone and `print` for animation calls is the entire integration.
 
 For a squad, forward the `alert` event to nearby guards via `guard.alertTo(world, position)` — `squad.nut` shows the whole pattern in its `emit` handler.
+
+## Embedding in C++
+
+`host.cpp` is a complete, self-contained example of running `guard.nut` from a native host. The C++ side implements the engine boundary — `canSee` (perception), `emit` (event reaction), the target entity, and the frame loop — as native functions; the behavior stays in the script. Build and run it against a Squirrel install:
+
+```bash
+brew install squirrel-lang     # or point -I/-L at your own Squirrel build
+c++ -std=c++11 host.cpp -I/opt/homebrew/include -L/opt/homebrew/lib \
+    -lsquirrel -lsqstdlib -o host && ./host
+```
+
+It drives the guard through the full state arc (`PATROL → CHASE → ATTACK → SEARCH → RETURN`), printing `[engine]` lines each time the script calls back into native code. Swap the bodies of `canSee`/`emit` for your raycasts and animation calls and the same script runs in your game.
 
 ## Suggested extensions
 
