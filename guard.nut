@@ -77,6 +77,8 @@ function positionText(position) {
 // --- the guard -----------------------------------------------------------
 
 class GuardNPC {
+    static VERSION = "0.1.0";   // read as GuardNPC.VERSION to check the vendored copy
+
     name = "Guard";
     position = null;
     patrolPoints = null;
