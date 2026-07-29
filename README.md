@@ -145,6 +145,7 @@ behavior. The complete example is in `squad.nut`.
 - `grid_navigation.nut` — self-contained deterministic grid adapter implementing `world.moveToward` with obstacle-aware BFS.
 - `navigation_example.nut` — focused runnable navigation check (`sq navigation_example.nut`).
 - `doc/ENGINE-INTEGRATION.md` — concrete adapter notes for native C++ and Squirrel-hosting engines.
+- `examples/godot/` — Godot 4 host-side GDScript adapter pattern with FOV/raycast, `NavigationAgent2D`, target mapping, and event handling. This is a conceptual port; Godot does not execute `guard.nut` without a native Squirrel bridge.
 - `host.cpp` — a standalone C++11 embedding reference. `SquirrelVm` owns VM setup, while `SampleWorld` owns the demo target/world tables and native callbacks; production engines replace those sample callback bodies (see below).
 - `test.nut` — self-check driving a guard through every state transition and the alert path (`sq test.nut`).
 
