@@ -1,10 +1,21 @@
-# npc-fsm
+# NPC-FSM
 
+[![Squirrel](https://img.shields.io/badge/Squirrel-3.x-blue?style=flat-square)](https://squirrel-lang.org/)
+[![C%2B%2B](https://img.shields.io/badge/C%2B%2B-Engine%20Embedding-orange?style=flat-square)](host.cpp)
 [![CI](https://github.com/wuisabel-gif/npc-fsm/actions/workflows/ci.yml/badge.svg)](https://github.com/wuisabel-gif/npc-fsm/actions/workflows/ci.yml)
-[![release](https://img.shields.io/github/v/release/wuisabel-gif/npc-fsm)](https://github.com/wuisabel-gif/npc-fsm/releases/latest)
-[![license](https://img.shields.io/github/license/wuisabel-gif/npc-fsm)](LICENSE)
+[![License](https://img.shields.io/github/license/wuisabel-gif/npc-fsm)](LICENSE)
 
-An engine-independent NPC behavior library written in **Squirrel**. It drives a guard with a finite-state machine you plug into your own game — no engine dependency.
+An engine-independent NPC behavior library written in **Squirrel**.
+
+`npc-fsm` provides a reusable finite-state machine for game characters. The
+behavior logic is separated from the game engine through a small `world`
+adapter, allowing the same NPC script to run in a custom C++ engine, a
+prototype simulation, or another Squirrel-hosting environment.
+
+The project is intentionally deterministic: the FSM is responsible for
+high-level behavior and predictable transitions, while the host remains
+responsible for perception, navigation, animation, sound, damage, and
+rendering.
 
 ![squad alert demo](assets/squad.gif)
 
@@ -34,6 +45,89 @@ The guard can:
 - React to damage and die
 - Alert nearby guards on detection, so a squad converges (see `squad.nut`)
 
+## Architecture
+
+The guard never accesses the game world directly. Each frame, the host passes a
+`world` adapter to the guard:
+
+```text
+world.target
+world.canSee(guard, target)
+world.emit(guard, event, data)
+world.moveToward(guard, destination, distance)
+```
+
+```mermaid
+flowchart LR
+    Engine[Game engine] --> World[World adapter]
+    World --> Guard[Guard FSM]
+    Guard --> World
+    World --> Engine
+```
+
+This boundary makes the behavior portable. A host can use a real FOV cone,
+raycast, navmesh, animation system, or network layer without changing
+`guard.nut`. See `perception.nut` for a host-side FOV example and
+`doc/ENGINE-INTEGRATION.md` for integration notes.
+
+## Current state machine
+
+```text
+PATROL -> CHASE -> ATTACK
+   ^        |          |
+   |        |          |
+RETURN <- SEARCH <------
+```
+
+The state machine is deterministic and intentionally acts as the authoritative
+behavior and safety layer. This makes transitions easy to test and debug while
+leaving engine-specific decisions at the adapter boundary.
+
+## Optional machine-learning direction
+
+The current implementation does **not** require machine learning. It is a
+traditional deterministic FSM. However, the adapter boundary provides a clear
+extension point for adding learned perception or decision support without
+throwing away the predictable state machine:
+
+```mermaid
+flowchart LR
+    Sensors[World observations] --> ML[Optional ML model]
+    ML --> FSM[FSM state controller]
+    FSM --> Actions[Engine actions]
+```
+
+Potential extensions include:
+
+- **Learned perception:** estimate visibility, detection confidence, target
+  identity, occlusion, or threat level and use the result to influence the
+  suspicion meter.
+- **Learned navigation:** suggest search locations, cover positions,
+  interception points, or pursuit strategies while the FSM validates the
+  resulting behavior.
+- **Learned state recommendations:** recommend patrol, investigation, chase,
+  retreat, or calling for help while the FSM rejects invalid transitions.
+- **Reinforcement-learning environments:** expose observations such as guard
+  health, target visibility, suspicion, patrol progress, nearby allies, and
+  obstacles; actions such as investigate, chase, attack, and call for help;
+  and rewards for successful detection, survival, and squad coordination.
+
+The recommended design is hybrid: the ML model provides a recommendation, the
+FSM remains the authoritative behavior controller, and the engine remains the
+authoritative source of world state.
+
+## Squad behavior
+
+Squad communication is implemented by the host rather than hardcoded into the
+guard library. When one guard detects the player, the host can forward its
+`alert` event to nearby guards:
+
+```squirrel
+guard.alertTo(world, alertPosition);
+```
+
+This lets each game define its own radio range, team relationships, and network
+behavior. The complete example is in `squad.nut`.
 ## Files
 
 - `guard.nut` — the reusable, engine-independent guard behavior. Drop this into your game. No `print`, no loop, no hardcoded player.
