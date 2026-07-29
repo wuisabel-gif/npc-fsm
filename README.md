@@ -145,7 +145,7 @@ behavior. The complete example is in `squad.nut`.
 - `grid_navigation.nut` — self-contained deterministic grid adapter implementing `world.moveToward` with obstacle-aware BFS.
 - `navigation_example.nut` — focused runnable navigation check (`sq navigation_example.nut`).
 - `doc/ENGINE-INTEGRATION.md` — concrete adapter notes for native C++ and Squirrel-hosting engines.
-- `host.cpp` — a ~200-line C++ program that embeds the Squirrel VM and drives `guard.nut`, implementing perception and events natively. Proof the library runs inside a real engine (see below).
+- `host.cpp` — a standalone C++11 embedding reference. `SquirrelVm` owns VM setup, while `SampleWorld` owns the demo target/world tables and native callbacks; production engines replace those sample callback bodies (see below).
 - `test.nut` — self-check driving a guard through every state transition and the alert path (`sq test.nut`).
 
 ## Run the demos
@@ -207,7 +207,7 @@ c++ -std=c++11 host.cpp -I/opt/homebrew/include -L/opt/homebrew/lib \
     -lsquirrel -lsqstdlib -o host && ./host
 ```
 
-It drives the guard through the full state arc (`PATROL → CHASE → ATTACK → SEARCH → RETURN`), printing `[engine]` lines each time the script calls back into native code. Swap the bodies of `canSee`/`emit` for your raycasts and animation calls and the same script runs in your game.
+The sample keeps the VM, world, target, and guard alive across the frame loop. `SquirrelVm` closes the VM last; `SampleWorld` releases its `HSQOBJECT` references before that close. In a game, retain the VM and guard for the actor lifetime, update the world target each frame, and call `guard.update(deltaTime, world)`. Replace `sampleCanSee`, `sampleEmit`, and `sampleTakeDamage` with raycasts, presentation/event dispatch, and authoritative damage handling; keep callback-time handle resolution and do not retain pointers to destroyed engine objects. The sample’s straight-line target movement and frame loop are also intended replacement points.
 
 ## Suggested extensions
 
