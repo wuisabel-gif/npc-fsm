@@ -14,6 +14,15 @@ flowchart LR
     Emit --> World
 ```
 
+`grid_navigation.nut` and `navigation_example.nut` provide a runnable Squirrel
+stand-in: a deterministic BFS over a small blocked-cell grid. It demonstrates
+the important contract without requiring an engine or navmesh. Replace the
+`GridNavigator` implementation with a real navmesh/pathfinder query in a game;
+the adapter should return the engine's collision-resolved, authoritative
+`{x, y}` transform after each step. If pathfinding is asynchronous, return the
+current authoritative position until the request completes rather than
+predicting movement in Squirrel.
+
 ## A native C++ engine
 
 `host.cpp` is the smallest complete adapter. In a production engine, keep the
