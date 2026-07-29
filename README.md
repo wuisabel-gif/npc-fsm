@@ -57,6 +57,13 @@ world.emit(guard, event, data)
 world.moveToward(guard, destination, distance)
 ```
 
+`target` may be `null`, but the `target` property and the `canSee` and `emit`
+callbacks are required. The optional `moveToward` property, when present, must
+be callable and must return the guard's resulting `{x, y}` position. The
+standalone `validateWorld(world)` helper checks this contract and `update()`
+checks it at the start of every frame, producing an explicit error before a
+malformed adapter reaches FSM logic.
+
 ```mermaid
 flowchart LR
     Engine[Game engine] --> World[World adapter]

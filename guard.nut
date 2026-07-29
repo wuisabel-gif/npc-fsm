@@ -13,6 +13,10 @@
 //                                      return the new position {x,y}. Omit it and the
 //                                      guard uses the built-in straight-line fallback.
 //
+// Call validateWorld(world) to check this contract explicitly. update() performs
+// the same validation at its frame boundary. `target` may be null, but the
+// property and the canSee/emit callbacks are required.
+//
 // The target entity is duck-typed — it must expose:
 //   .position {x,y}   .alive (bool)   .takeDamage(amount)
 //
@@ -27,6 +31,24 @@
 // that to nearby guards via their alertTo(world, position) to make a squad react.
 //
 // See demo.nut for a complete example host (distance-based sight, print events).
+
+// Validate the engine boundary before the FSM starts calling into it. `target`
+// may be null, but the property itself is required; moveToward is optional.
+// Hosts may call this directly when constructing an adapter as well.
+function validateWorld(world) {
+    if (world == null) throw "world adapter is required";
+    if (!("target" in world)) throw "world.target is required";
+    if (!("canSee" in world) || typeof world.canSee != "function") {
+        throw "world.canSee(guard, target) callback is required";
+    }
+    if (!("emit" in world) || typeof world.emit != "function") {
+        throw "world.emit(guard, event, data) callback is required";
+    }
+    if (("moveToward" in world) && typeof world.moveToward != "function") {
+        throw "world.moveToward(guard, destination, distance) must be a function";
+    }
+    return world;
+}
 
 const STATE_PATROL = "PATROL";
 const STATE_CHASE  = "CHASE";
@@ -77,7 +99,7 @@ function positionText(position) {
 // --- the guard -----------------------------------------------------------
 
 class GuardNPC {
-    static VERSION = "0.1.1";   // read as GuardNPC.VERSION to check the vendored copy
+    static VERSION = "0.1.2";   // read as GuardNPC.VERSION to check the vendored copy
 
     name = "Guard";
     position = null;
@@ -173,6 +195,7 @@ class GuardNPC {
     }
 
     function update(deltaTime, world) {
+        validateWorld(world);
         if (state == STATE_DEAD) return;
         attackTimer = clamp(attackTimer - deltaTime, 0.0, attackCooldown);
 

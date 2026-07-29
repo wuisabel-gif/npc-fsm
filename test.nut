@@ -32,6 +32,63 @@ function assertOrder(seen, expected) {
     if (j != expected.len()) throw "expected FSM path not observed";
 }
 
+function assertWorldError(world, expected) {
+    local failed = false;
+    try {
+        validateWorld(world);
+    } catch (error) {
+        failed = true;
+        assert(error == expected);
+    }
+    assert(failed);
+}
+
+// The adapter contract fails early with a useful error instead of a missing
+// member/call error deep inside a state update.
+function testWorldContract() {
+    local valid = { target = null,
+        canSee = function(guard, t) { return false; },
+        emit = function(guard, event, data) {} };
+    assert(validateWorld(valid) == valid);
+
+    assertWorldError({ target = null, emit = valid.emit },
+        "world.canSee(guard, target) callback is required");
+    assertWorldError({ target = null, canSee = valid.canSee },
+        "world.emit(guard, event, data) callback is required");
+    assertWorldError({ target = null, canSee = valid.canSee,
+        emit = valid.emit, moveToward = true },
+        "world.moveToward(guard, destination, distance) must be a function");
+    assertWorldError({ canSee = valid.canSee, emit = valid.emit },
+        "world.target is required");
+    print("test.nut: world contract OK\n");
+}
+
+// Omitting moveToward preserves the built-in straight-line fallback; supplying
+// it delegates movement and uses the adapter's returned position.
+function testOptionalMovement() {
+    local route = [vec2(10, 0)];
+    local noNavigation = { target = null,
+        canSee = function(guard, t) { return false; },
+        emit = function(guard, event, data) {} };
+    local fallbackGuard = GuardNPC("Fallback", vec2(0, 0), route);
+    fallbackGuard.update(1.0, noNavigation);
+    assert(fallbackGuard.position.x > 0.0);
+    assert(fallbackGuard.position.x < 10.0);
+
+    local calls = 0;
+    local navigation = { target = null,
+        canSee = noNavigation.canSee, emit = noNavigation.emit,
+        moveToward = function(guard, destination, distance) {
+            calls++;
+            return vec2(7, 3);
+        } };
+    local routedGuard = GuardNPC("Routed", vec2(0, 0), route);
+    routedGuard.update(1.0, navigation);
+    assert(calls == 1);
+    assert(routedGuard.position.x == 7 && routedGuard.position.y == 3);
+    print("test.nut: optional movement OK\n");
+}
+
 function run() {
     local route = [vec2(0, 0), vec2(6, 0), vec2(6, 6), vec2(0, 6)];
     local guard = GuardNPC("Test", vec2(0, 0), route);
@@ -79,3 +136,5 @@ function testAlert() {
 
 run();
 testAlert();
+testWorldContract();
+testOptionalMovement();
