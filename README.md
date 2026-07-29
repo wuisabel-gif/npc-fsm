@@ -142,6 +142,8 @@ behavior. The complete example is in `squad.nut`.
 - `demo.nut` — single-guard example host (`sq demo.nut`). Prints a live ASCII arena each tick: `G` guard, `P` player, `o` waypoints, `x` dead guard.
 - `squad.nut` — multi-guard example host (`sq squad.nut`). One guard's alert summons nearby guards while a distant one stays on patrol; guards render as `1`/`2`/`3`.
 - `perception.nut` — optional host-side distance + facing-cone perception helper with an occlusion hook; the demos show how to wire it into `world.canSee`.
+- `grid_navigation.nut` — self-contained deterministic grid adapter implementing `world.moveToward` with obstacle-aware BFS.
+- `navigation_example.nut` — focused runnable navigation check (`sq navigation_example.nut`).
 - `doc/ENGINE-INTEGRATION.md` — concrete adapter notes for native C++ and Squirrel-hosting engines.
 - `host.cpp` — a ~200-line C++ program that embeds the Squirrel VM and drives `guard.nut`, implementing perception and events natively. Proof the library runs inside a real engine (see below).
 - `test.nut` — self-check driving a guard through every state transition and the alert path (`sq test.nut`).
@@ -151,9 +153,10 @@ behavior. The complete example is in `squad.nut`.
 Install or build the official Squirrel interpreter, then:
 
 ```bash
-sq demo.nut     # one guard
-sq squad.nut    # three guards + alert propagation
-sq test.nut     # self-check (prints "all transitions OK")
+sq demo.nut                 # one guard
+sq squad.nut               # three guards + alert propagation
+sq test.nut                # self-check (prints "all transitions OK")
+sq navigation_example.nut  # deterministic obstacle-aware movement check
 ```
 
 Depending on your installation, the interpreter executable may have a different path or name.
@@ -174,12 +177,25 @@ world.target                     -> the entity the guard reacts to, or null
 world.canSee(guard, target)      -> your field-of-view + raycast/occlusion test
 world.emit(guard, event, data)   -> your animation / sound / UI / logging
 world.moveToward(guard, dest, d) -> OPTIONAL: your navmesh/pathfinding/steering.
+                                    It returns the authoritative new {x,y} position.
                                     Omit it to use the built-in straight-line move.
 ```
 
 The target entity is duck-typed: it needs `.position {x,y}`, `.alive`, and `.takeDamage(amount)`. Events the guard emits: `state`, `waypoint`, `attack`, `damaged`, `death`, and `alert` (fired the moment suspicion tops out, carrying the target's last known position). See `demo.nut` for a complete working host you can copy — swapping distance-based sight for a real FOV cone and `print` for animation calls is the entire integration.
 
 For a squad, forward the `alert` event to nearby guards via `guard.alertTo(world, position)` — `squad.nut` shows the whole pattern in its `emit` handler.
+
+### Navigation adapter example
+
+`navigation_example.nut` wires `world.moveToward` to `grid_navigation.nut`, a
+small deterministic breadth-first grid navigator with blocked cells. The
+callback returns the position after collision-free movement, and the guard
+assigns that return value as its authoritative script position. This example is
+intentionally a testable stand-in, not a production navigation system. Replace
+`GridNavigator.path()`/`moveToward()` with your engine's navmesh or pathfinder
+query, use the engine's collision-resolved transform, and return that transform
+as `{x, y}` on every call (or the current authoritative position while an
+asynchronous path request is pending).
 
 ## Embedding in C++
 
