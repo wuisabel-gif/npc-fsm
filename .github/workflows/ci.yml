@@ -9,11 +9,11 @@ jobs:
       - name: Build Squirrel from source
         run: |
           git clone --depth 1 --branch v3.2 https://github.com/albertodemichelis/squirrel.git /tmp/squirrel
-          cmake -S /tmp/squirrel -B /tmp/squirrel/build -DCMAKE_BUILD_TYPE=Release
+          cmake -S /tmp/squirrel -B /tmp/squirrel/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
           cmake --build /tmp/squirrel/build --config Release -j
       - name: Run self-check
         run: |
-          SQ=$(find /tmp/squirrel/build -name sq -type f -perm -u+x | head -1)
+          SQ=$(find /tmp/squirrel/build -type f -name sq -perm -111 -print -quit)
           test -n "$SQ" || { echo "sq binary not found after build"; exit 1; }
           echo "using $SQ"
           "$SQ" test.nut
