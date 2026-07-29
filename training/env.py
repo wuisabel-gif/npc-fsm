@@ -47,6 +47,9 @@ class SyntheticGuardEnv(gym.Env):
         self.state = 0
         self.steps = 0
         self.target_velocity = np.zeros(2, dtype=np.float32)
+        # Progress shaping is deliberately bounded so pursuit/search cannot be
+        # used to farm reward instead of finishing the episode.
+        self._shaping_total = 0.0
 
     def _visible(self) -> bool:
         distance = float(np.linalg.norm(self.target - self.guard))
@@ -73,63 +76,90 @@ class SyntheticGuardEnv(gym.Env):
         self.target_velocity = rng.uniform(-0.7, 0.7, size=2).astype(np.float32)
         self.health, self.suspicion, self.attack_timer = 100.0, 0.0, 0.0
         self.target_alive, self.state, self.steps = True, 0, 0
+        self._shaping_total = 0.0
         return self._obs(), {"state": ACTIONS[self.state]}
 
     def step(self, action: int):
-        action = int(action)
-        if not self.action_space.contains(action):
-            raise ValueError(f"action must be in [0, {len(ACTIONS) - 1}]")
+        """Advance one step, with bounded progress and outcome-dominant rewards."""
+        try:
+            requested = int(action)
+        except (TypeError, ValueError):
+            requested = -1
         self.steps += 1
         self.attack_timer = max(0.0, self.attack_timer - self.dt)
-        distance = float(np.linalg.norm(self.target - self.guard))
+        old_distance = float(np.linalg.norm(self.target - self.guard))
         visible = self._visible()
+        old_suspicion = self.suspicion
         if visible:
-            closeness = max(0.2, min(1.0, 1.0 - distance / 8.0))
+            closeness = max(0.2, min(1.0, 1.0 - old_distance / 8.0))
             self.suspicion = min(1.0, self.suspicion + 1.6 * closeness * self.dt)
         else:
             self.suspicion = max(0.0, self.suspicion - 0.5 * self.dt)
 
-        requested = action
-        reward = -0.01  # small time cost
-        if self.target_alive and visible and self.suspicion >= 1.0:
-            self.state = 1  # detection commits to CHASE, as in guard.nut
-            reward += 0.15
-        elif self.state == 0 and requested == 0:
-            self.state = 0
-        elif requested == 2 and distance <= 1.4 and self.target_alive:
-            self.state = 2
-            if self.attack_timer <= 0.0:
-                self.target_alive = False  # one successful 12-damage hit in this toy task
-                self.attack_timer = 1.25
-                reward += 5.0
-        elif requested == 1 and self.target_alive:
-            self.state = 1
-            self._move(3.4)
-            reward += 0.05 if visible else -0.02
-        elif requested == 3:
-            self.state = 3
-            self._move(1.8)
-            reward += 0.03 if not visible else 0.0
-        elif requested == 4:
-            self.state = 4
-            self._move(1.8)
+        reward = -0.01  # time cost prevents endless neutral looping
+        reward_parts = {"time": reward, "progress": 0.0, "event": 0.0,
+                        "invalid": 0.0, "timeout": 0.0}
+        invalid = not self.action_space.contains(requested)
+        if invalid:
+            # Keep the Gym step contract intact for bad policies, but make an
+            # invalid recommendation substantially worse than waiting.
+            reward = -0.5
+            reward_parts["invalid"] = reward
+            self.state = 0  # safe fallback: PATROL
         else:
-            self.state = 0
-            self._move(1.8)
+            if old_suspicion < 1.0 <= self.suspicion:
+                self.state = 1  # detection commits to CHASE
+                reward += 0.10
+                reward_parts["event"] += 0.10
+            if requested == 2 and self.target_alive:
+                if old_distance <= 1.4:
+                    self.state = 2
+                    if self.attack_timer <= 0.0:
+                        self.target_alive = False
+                        self.attack_timer = 1.25
+                        reward += 10.0
+                        reward_parts["event"] += 10.0
+                else:
+                    self.state = 1
+                    reward -= 0.25  # an attack out of range is wasteful
+                    reward_parts["invalid"] -= 0.25
+            elif requested == 1 and self.target_alive:
+                self.state = 1
+                self._move(3.4)
+            elif requested == 3:
+                self.state = 3
+                self._move(1.8)
+            elif requested == 4:
+                self.state = 4
+                self._move(1.8)
+            else:
+                self.state = 0
+                self._move(1.8)
 
         if self.target_alive:
             self.target += self.target_velocity * self.dt
             self.target = np.clip(self.target, -7.5, 7.5)
         distance = float(np.linalg.norm(self.target - self.guard))
-        if requested == 2 and distance > 1.4:
-            reward -= 0.08
-        if requested == 1 and distance > 11.0:
-            self.state = 3  # lost target -> SEARCH
-            reward += 0.05
+
+        # Only CHASE/SEARCH earn distance shaping, and the episode-wide cap
+        # prevents repeated movement rewards from competing with +10 success.
+        if not invalid and requested in (1, 3) and self.target_alive:
+            progress = max(0.0, old_distance - distance)
+            shaped = min(0.03, 0.12 * progress, max(0.0, 0.75 - self._shaping_total))
+            reward += shaped
+            reward_parts["progress"] = shaped
+            self._shaping_total += shaped
+        if requested == 1 and self.target_alive and distance > 11.0:
+            self.state = 3  # lost target -> SEARCH, without a farming bonus
+
         terminated = not self.target_alive
-        truncated = self.steps >= self.max_steps
+        truncated = not terminated and self.steps >= self.max_steps
+        if truncated:
+            reward -= 2.0
+            reward_parts["timeout"] = -2.0
         return self._obs(), float(reward), terminated, truncated, {
             "state": ACTIONS[self.state], "visible": visible, "distance": distance,
+            "reward_parts": reward_parts,
         }
 
     def _move(self, speed: float) -> None:

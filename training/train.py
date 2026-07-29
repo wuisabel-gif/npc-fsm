@@ -41,6 +41,8 @@ def main() -> None:
     parser.add_argument("--smoke", action="store_true")
     parser.add_argument("--timesteps", type=int, default=20_000)
     parser.add_argument("--output", type=Path, default=Path("training/artifacts/ppo_guard"))
+    parser.add_argument("--device", default="cpu",
+                        help="PyTorch device for PPO (default: cpu; e.g. cuda or auto)")
     args = parser.parse_args()
     if args.smoke:
         smoke()
@@ -50,7 +52,7 @@ def main() -> None:
     except ImportError as exc:
         raise SystemExit("PPO mode needs requirements.txt installed; use --smoke for a local check") from exc
     env = SyntheticGuardEnv()
-    model = PPO("MlpPolicy", env, verbose=1, seed=7)
+    model = PPO("MlpPolicy", env, verbose=1, seed=7, device=args.device)
     model.learn(total_timesteps=args.timesteps)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     model.save(str(args.output))
