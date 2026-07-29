@@ -1,3 +1,8 @@
 .DS_Store
 host
 *.o
+
+# Generated ML training outputs
+training/artifacts/
+__pycache__/
+*.pyc
