@@ -21,6 +21,10 @@ rendering.
 
 *Guard-1 spots the target and radios it in; Guard-2 (nearby) is summoned and converges; Guard-3 (far away) never hears it. Same `guard.nut` as the single-guard demo — the squad behavior is all in the host.*
 
+![terminal FSM demo](assets/demo-terminal.gif)
+
+*The terminal recording runs the real `demo.nut` host: the guard patrols, detects the player, chases, attacks, searches, and returns to its route.*
+
 ## Behavior states
 
 ```text
