@@ -94,21 +94,43 @@ The state machine is deterministic and intentionally acts as the authoritative
 behavior and safety layer. This makes transitions easy to test and debug while
 leaving engine-specific decisions at the adapter boundary.
 
-## Optional machine-learning direction
+## Machine-learning implementation and roadmap
 
-The current implementation does **not** require machine learning. It is a
-traditional deterministic FSM. However, the adapter boundary provides a clear
-extension point for adding learned perception or decision support without
-throwing away the predictable state machine:
+The repository now includes a PyTorch reinforcement-learning training pipeline in
+`training/`. It uses a synthetic Gymnasium environment modeled on the guard's
+observable tactical state and trains a PPO policy with Stable-Baselines3. The
+pipeline can run locally or in a Kaggle notebook and exports an evaluation
+report plus a JSON policy artifact.
+
+The training environment currently exposes:
+
+- Guard position and target-relative position
+- Target distance and visibility
+- Suspicion, health, and attack cooldown
+- Target life state
+- Current FSM state
+
+The policy chooses among patrol, chase, attack, search, and return actions. The
+training environment is deliberately a surrogate: it does not replace
+`guard.nut`, and a trained model is not committed to the repository. Run the
+smoke test or follow [`training/README.md`](training/README.md) for local and
+Kaggle training instructions.
+
+The next runtime step is to connect the exported policy through a host-side
+inference adapter. The FSM remains the authoritative safety layer: it validates
+model recommendations and provides deterministic behavior when inference is
+unavailable or a recommendation is invalid.
 
 ```mermaid
 flowchart LR
-    Sensors[World observations] --> ML[Optional ML model]
-    ML --> FSM[FSM state controller]
-    FSM --> Actions[Engine actions]
+    Sim[Python RL environment] --> PPO[PyTorch PPO training]
+    PPO --> Export[JSON or ONNX policy]
+    Export --> Adapter[Host inference adapter]
+    Adapter --> FSM[FSM validation]
+    FSM --> Engine[Engine actions]
 ```
 
-Potential extensions include:
+Future ML work includes:
 
 - **Learned perception:** estimate visibility, detection confidence, target
   identity, occlusion, or threat level and use the result to influence the
@@ -116,14 +138,12 @@ Potential extensions include:
 - **Learned navigation:** suggest search locations, cover positions,
   interception points, or pursuit strategies while the FSM validates the
   resulting behavior.
-- **Learned state recommendations:** recommend patrol, investigation, chase,
-  retreat, or calling for help while the FSM rejects invalid transitions.
-- **Reinforcement-learning environments:** expose observations such as guard
-  health, target visibility, suspicion, patrol progress, nearby allies, and
-  obstacles; actions such as investigate, chase, attack, and call for help;
-  and rewards for successful detection, survival, and squad coordination.
+- **Engine deployment:** load a validated exported policy through a native
+  C++/ONNX adapter or a Squirrel-compatible policy table.
+- **Evaluation:** compare learned policies against the deterministic FSM using
+  survival, detection, attack success, and squad-coordination metrics.
 
-The recommended design is hybrid: the ML model provides a recommendation, the
+The recommended design is hybrid: the ML policy provides a recommendation, the
 FSM remains the authoritative behavior controller, and the engine remains the
 authoritative source of world state.
 
@@ -149,6 +169,7 @@ behavior. The complete example is in `squad.nut`.
 - `grid_navigation.nut` — self-contained deterministic grid adapter implementing `world.moveToward` with obstacle-aware BFS.
 - `navigation_example.nut` — focused runnable navigation check (`sq navigation_example.nut`).
 - `doc/ENGINE-INTEGRATION.md` — concrete adapter notes for native C++ and Squirrel-hosting engines.
+- `training/` — PyTorch PPO training environment, evaluation/export scripts, and Kaggle instructions for the tactical policy.
 - `examples/godot/` — Godot 4 host-side GDScript adapter pattern with FOV/raycast, `NavigationAgent2D`, target mapping, and event handling. This is a conceptual port; Godot does not execute `guard.nut` without a native Squirrel bridge.
 - `host.cpp` — a standalone C++11 embedding reference. `SquirrelVm` owns VM setup, while `SampleWorld` owns the demo target/world tables and native callbacks; production engines replace those sample callback bodies (see below).
 - `test.nut` — self-check driving a guard through every state transition and the alert path (`sq test.nut`).

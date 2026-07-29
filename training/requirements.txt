@@ -1,0 +1,6 @@
+# Training-only dependencies; none are needed by the Squirrel runtime.
+# Python 3.10+ recommended.
+numpy>=1.24,<3
+gymnasium>=0.29,<1
+stable-baselines3[extra]>=2.2,<3
+torch>=2.0
