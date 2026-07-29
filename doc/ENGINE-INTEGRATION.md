@@ -19,7 +19,9 @@ flowchart LR
 `host.cpp` is the smallest complete adapter. In a production engine, keep the
 same shape but replace its sample implementations:
 
-- `world.target` is a handle or wrapper for the current target.
+- `world.target` is a handle or wrapper for the current target (the property is required, and may be null).
+- `canSee` and `emit` are required callable callbacks; `validateWorld(world)` can be used for an explicit boundary check.
+- `moveToward` is optional. If supplied, it must return the resulting `{x, y}` position; otherwise the guard uses its straight-line fallback.
 - `canSee` first checks the guard's view cone and then performs the engine's
   collision/raycast query. `perception.nut` contains a Squirrel-only cone
   example with an optional occlusion callback.
@@ -53,6 +55,7 @@ world.emit <- function(guard, event, data) {
     if (event == "attack") apply_damage(target, data.damage);
     else if (event == "alert") radio_nearby_guards(data.position);
 };
+validateWorld(world); // optional early check; update() also checks per frame
 guard.update(ticks_to_seconds(ticks), world);
 ```
 
