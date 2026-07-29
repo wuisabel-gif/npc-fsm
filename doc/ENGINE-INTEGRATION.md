@@ -25,8 +25,24 @@ predicting movement in Squirrel.
 
 ## A native C++ engine
 
-`host.cpp` is the smallest complete adapter. In a production engine, keep the
-same shape but replace its sample implementations:
+`host.cpp` is a standalone C++11 reference adapter. Build it from the repository root against Squirrel 3.x (adjust paths as needed):
+
+```bash
+c++ -std=c++11 host.cpp -I/opt/homebrew/include -L/opt/homebrew/lib \
+    -lsquirrel -lsqstdlib -o host && ./host
+```
+
+`SquirrelVm` owns VM creation/closure, `SampleWorld` owns the referenced target
+and world tables, and `main` owns the guard reference and frame loop. Release
+`HSQOBJECT`s before closing their VM. Keep those objects alive across frames;
+recreating a guard resets its timers, suspicion, and last-known position.
+
+Replace `sampleCanSee`, `sampleEmit`, and `sampleTakeDamage` with the engine's
+raycast/perception, event/presentation, and authoritative damage systems. The
+sample target movement in `SampleWorld::moveTarget` and the loop in `main` are
+similarly replaceable. Native callbacks should resolve engine handles at call
+time and must not retain pointers to actors that may be destroyed.
+
 
 - `world.target` is a handle or wrapper for the current target (the property is required, and may be null).
 - `canSee` and `emit` are required callable callbacks; `validateWorld(world)` can be used for an explicit boundary check.
