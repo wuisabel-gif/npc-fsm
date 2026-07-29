@@ -4,6 +4,7 @@
 // three adapter functions with your real FOV, event, and navigation systems.
 
 dofile("guard.nut", true);
+dofile("perception.nut", true); // optional host-side FOV example
 dofile("player.nut", true);   // the example target entity
 
 // The world adapter. THIS is the engine boundary — swap each function for your
@@ -13,10 +14,13 @@ function makeWorld(target) {
     return {
         target = target,
 
-        // Perception: demo uses plain distance. Real engine: cone + raycast.
+        // Perception: a 75-degree patrol-facing cone plus an optional occlusion hook.
+        // Replace patrolFacing() with the facing from your animation/locomotion system.
+        fovHalfAngleDegrees = 75.0,
+        occluded = null, // e.g. function(guard, target) { return nav.raycast(...); }
         canSee = function(guard, target) {
-            return target.alive
-                && vecDistance(guard.position, target.position) <= guard.sightRange;
+            return fovCanSee(guard, target, patrolFacing(guard),
+                this.fovHalfAngleDegrees, this.occluded);
         },
 
         // Output: demo prints. Real engine: trigger animation / sound / UI here.

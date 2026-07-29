@@ -40,6 +40,8 @@ The guard can:
 - `player.nut` — the example target entity used by the demos.
 - `demo.nut` — single-guard example host (`sq demo.nut`). Prints a live ASCII arena each tick: `G` guard, `P` player, `o` waypoints, `x` dead guard.
 - `squad.nut` — multi-guard example host (`sq squad.nut`). One guard's alert summons nearby guards while a distant one stays on patrol; guards render as `1`/`2`/`3`.
+- `perception.nut` — optional host-side distance + facing-cone perception helper with an occlusion hook; the demos show how to wire it into `world.canSee`.
+- `doc/ENGINE-INTEGRATION.md` — concrete adapter notes for native C++ and Squirrel-hosting engines.
 - `host.cpp` — a ~200-line C++ program that embeds the Squirrel VM and drives `guard.nut`, implementing perception and events natively. Proof the library runs inside a real engine (see below).
 - `test.nut` — self-check driving a guard through every state transition and the alert path (`sq test.nut`).
 

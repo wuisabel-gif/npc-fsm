@@ -7,6 +7,7 @@
 // entirely in the host's emit handler, not in the guard.
 
 dofile("guard.nut", true);
+dofile("perception.nut", true);
 dofile("player.nut", true);
 
 function makeWorld(player, guards, alertRadius) {
@@ -15,8 +16,12 @@ function makeWorld(player, guards, alertRadius) {
         guards = guards,
         alertRadius = alertRadius,
 
+        // The host supplies facing and may add a raycast in `occluded`.
+        fovHalfAngleDegrees = 75.0,
+        occluded = null,
         canSee = function(guard, t) {
-            return t.alive && vecDistance(guard.position, t.position) <= guard.sightRange;
+            return fovCanSee(guard, t, patrolFacing(guard),
+                this.fovHalfAngleDegrees, this.occluded);
         },
 
         emit = function(guard, event, data) {
