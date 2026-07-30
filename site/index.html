@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="npc-fsm is an engine-independent Squirrel NPC finite-state machine with engine adapters and an experimental PyTorch PPO training pipeline.">
+  <title>npc-fsm — Portable NPC behavior</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="npc-fsm home"><span class="brand-mark">◈</span> npc-fsm</a>
+    <nav aria-label="Main navigation">
+      <a href="#architecture">Architecture</a>
+      <a href="#integrations">Integrations</a>
+      <a href="#learning">ML training</a>
+      <a class="nav-button" href="https://github.com/wuisabel-gif/npc-fsm">View on GitHub ↗</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> Squirrel · C++ · Godot · PPO</p>
+        <h1>NPC behavior that stays <em>portable.</em></h1>
+        <p class="lede">A deterministic finite-state machine for game characters, separated from the engine by one small world adapter.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="https://github.com/wuisabel-gif/npc-fsm/releases/tag/v0.2.0">Get v0.2.0 <span>↗</span></a>
+          <a class="button secondary" href="https://github.com/wuisabel-gif/npc-fsm/blob/main/README.md">Read the docs <span>→</span></a>
+        </div>
+        <div class="stats">
+          <div><strong>6</strong><span>behavior states</span></div>
+          <div><strong>0</strong><span>engine dependencies</span></div>
+          <div><strong>1</strong><span>world boundary</span></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="terminal-window">
+          <div class="terminal-top"><span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span><span class="terminal-title">sq demo.nut</span></div>
+          <div class="terminal-body">
+            <p class="muted">=== SQUIRREL NPC BEHAVIOR DEMO ===</p>
+            <p><span class="cyan">[t= 0.0]</span> Guard <span class="state patrol">PATROL</span></p>
+            <p><span class="cyan">[t= 3.0]</span> suspicion rising... <span class="bar">██████░░░░</span></p>
+            <p><span class="cyan">[t= 5.0]</span> Guard <span class="state chase">CHASE</span></p>
+            <p><span class="cyan">[t= 8.0]</span> Guard <span class="state attack">ATTACK</span></p>
+            <p><span class="cyan">[t=12.0]</span> target escaped</p>
+            <p><span class="cyan">[t=12.5]</span> Guard <span class="state search">SEARCH</span></p>
+            <p><span class="cyan">[t=17.0]</span> Guard <span class="state return">RETURN</span></p>
+            <p class="prompt">▸ deterministic behavior, engine-independent</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="demo-strip shell">
+      <div class="section-heading compact"><p class="eyebrow"><span></span> See it in motion</p><h2>From patrol to pursuit.</h2></div>
+      <img src="https://raw.githubusercontent.com/wuisabel-gif/npc-fsm/main/assets/demo-terminal.gif" alt="Animated terminal showing the NPC guard finite-state machine demo" loading="lazy">
+      <p class="caption">The real Squirrel demo runs the guard through patrol, detection, chase, attack, search, and return.</p>
+    </section>
+
+    <section id="architecture" class="section shell">
+      <div class="section-heading"><p class="eyebrow"><span></span> The idea</p><h2>Keep decisions separate from the world.</h2><p>The guard decides what to do. Your engine decides how the world responds.</p></div>
+      <div class="architecture-grid">
+        <div class="arch-card engine-card"><span class="card-number">01</span><h3>Game engine</h3><p>Physics, raycasts, navmesh, animation, combat, and rendering stay in your engine.</p><div class="code-lines"><code>raycast()</code><code>navigate()</code><code>play_animation()</code></div></div>
+        <div class="connector">↔</div>
+        <div class="arch-card adapter-card"><span class="card-number">02</span><h3>World adapter</h3><p>One small seam translates engine services into a stable contract.</p><div class="code-lines"><code>world.canSee()</code><code>world.moveToward()</code><code>world.emit()</code></div></div>
+        <div class="connector">↔</div>
+        <div class="arch-card fsm-card"><span class="card-number">03</span><h3>Guard FSM</h3><p>Predictable, testable decisions that run anywhere Squirrel can run.</p><div class="state-pills"><span>PATROL</span><span>CHASE</span><span>ATTACK</span><span>SEARCH</span></div></div>
+      </div>
+    </section>
+
+    <section id="integrations" class="section integrations-section">
+      <div class="shell"><div class="section-heading"><p class="eyebrow"><span></span> Plug it in</p><h2>One behavior. Many worlds.</h2><p>Start with the demos, then replace each adapter callback with your engine's systems.</p></div>
+        <div class="integration-grid">
+          <a class="integration-card" href="https://github.com/wuisabel-gif/npc-fsm/blob/main/host.cpp"><div class="icon">C++</div><h3>Native C++</h3><p>Embed the Squirrel VM and bind perception, movement, and events.</p><span>Embedding guide ↗</span></a>
+          <a class="integration-card" href="https://github.com/wuisabel-gif/npc-fsm/tree/main/examples/godot"><div class="icon godot">✦</div><h3>Godot 4</h3><p>FOV, raycast occlusion, NavigationAgent2D, target mapping, and event signals.</p><span>Godot example ↗</span></a>
+          <a class="integration-card" href="https://github.com/wuisabel-gif/npc-fsm/blob/main/perception.nut"><div class="icon cone">◒</div><h3>Perception</h3><p>Configurable facing cone with an optional occlusion hook for real visibility.</p><span>See perception.nut ↗</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section id="learning" class="section shell learning-section">
+      <div class="learning-copy"><p class="eyebrow"><span></span> Experimental ML</p><h2>Learn tactics. Keep control.</h2><p>The deterministic FSM remains the safety layer. A PyTorch PPO policy learns tactical recommendations in a synthetic Gymnasium world, ready for evaluation in Kaggle.</p><a class="text-link" href="https://github.com/wuisabel-gif/npc-fsm/blob/main/KAGGLE_TRAINING.md">Run training on Kaggle →</a></div>
+      <div class="pipeline"><div><b>01</b><span>Simulated world</span></div><i>→</i><div><b>02</b><span>PyTorch PPO</span></div><i>→</i><div><b>03</b><span>FSM validation</span></div><i>→</i><div><b>04</b><span>Engine action</span></div></div>
+    </section>
+
+    <section class="cta shell"><div><p class="eyebrow"><span></span> Open source · v0.2.0</p><h2>Build behavior, not a black box.</h2><p>Read the code, run the demos, and bring the adapter to your game.</p></div><a class="button primary" href="https://github.com/wuisabel-gif/npc-fsm">Explore the repository ↗</a></section>
+  </main>
+
+  <footer class="site-footer shell"><span>◈ npc-fsm</span><span>Portable NPC behavior in Squirrel.</span><a href="https://github.com/wuisabel-gif/npc-fsm/releases">Releases ↗</a></footer>
+</body>
+</html>

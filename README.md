@@ -5,7 +5,7 @@
 [![CI](https://github.com/wuisabel-gif/npc-fsm/actions/workflows/ci.yml/badge.svg)](https://github.com/wuisabel-gif/npc-fsm/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/wuisabel-gif/npc-fsm)](LICENSE)
 
-An engine-independent NPC behavior library written in **Squirrel**.
+An engine-independent NPC behavior library written in **Squirrel**. [Project website](https://wuisabel-gif.github.io/npc-fsm/)
 
 `npc-fsm` provides a reusable finite-state machine for game characters. The
 behavior logic is separated from the game engine through a small `world`
